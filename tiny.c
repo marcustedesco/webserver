@@ -4,6 +4,8 @@
  *     GET method to serve static and dynamic content.
  */
 #include "csapp.h"
+#include <stdio.h>
+#include <string.h>
 
 void doit(int fd);
 void read_requesthdrs(rio_t *rp);
@@ -11,6 +13,7 @@ int parse_uri(char *uri, char *filename, char *cgiargs);
 void serve_static(int fd, char *filename, int filesize);
 void get_filetype(char *filename, char *filetype);
 void serve_dynamic(int fd, char *filename, char *cgiargs);
+void serve_loadavg(int fd, char *filename, char *cgiargs);
 void clienterror(int fd, char *cause, char *errnum, 
 		 char *shortmsg, char *longmsg);
 
@@ -61,27 +64,36 @@ void doit(int fd)
 
     /* Parse URI from GET request */
     is_static = parse_uri(uri, filename, cgiargs);       //line:netp:doit:staticcheck
+
+    if(strstr(filename, "loadavg")){
+        printf("filename: %s\n", filename);
+        printf("cgiargs: %s\n", cgiargs);
+        serve_loadavg(fd, filename, cgiargs);
+        return;
+    }
+
     if (stat(filename, &sbuf) < 0) {                     //line:netp:doit:beginnotfound
-	clienterror(fd, filename, "404", "Not found",
-		    "Tiny couldn't find this file");
-	return;
+    	clienterror(fd, filename, "404", "Not found",
+    		    "Tiny couldn't find this file");
+    	return;
     }                                                    //line:netp:doit:endnotfound
 
     if (is_static) { /* Serve static content */          
-	if (!(S_ISREG(sbuf.st_mode)) || !(S_IRUSR & sbuf.st_mode)) { //line:netp:doit:readable
-	    clienterror(fd, filename, "403", "Forbidden",
-			"Tiny couldn't read the file");
-	    return;
-	}
-	serve_static(fd, filename, sbuf.st_size);        //line:netp:doit:servestatic
+    	if (!(S_ISREG(sbuf.st_mode)) || !(S_IRUSR & sbuf.st_mode)) { //line:netp:doit:readable
+    	    clienterror(fd, filename, "403", "Forbidden",
+    			"Tiny couldn't read the file");
+    	    return;
+    	}
+    	serve_static(fd, filename, sbuf.st_size);        //line:netp:doit:servestatic
     }
     else { /* Serve dynamic content */
-	if (!(S_ISREG(sbuf.st_mode)) || !(S_IXUSR & sbuf.st_mode)) { //line:netp:doit:executable
-	    clienterror(fd, filename, "403", "Forbidden",
-			"Tiny couldn't run the CGI program");
-	    return;
-	}
-	serve_dynamic(fd, filename, cgiargs);            //line:netp:doit:servedynamic
+    	if (!(S_ISREG(sbuf.st_mode)) || !(S_IXUSR & sbuf.st_mode)) { //line:netp:doit:executable
+    	    clienterror(fd, filename, "403", "Forbidden",
+    			"Tiny couldn't run the CGI program");
+    	    return;
+    	}
+
+        serve_dynamic(fd, filename, cgiargs);            //line:netp:doit:servedynamic
     }
 }
 /* $end doit */
@@ -113,24 +125,26 @@ int parse_uri(char *uri, char *filename, char *cgiargs)
     char *ptr;
 
     if (!strstr(uri, "cgi-bin")) {  /* Static content */ //line:netp:parseuri:isstatic
-	strcpy(cgiargs, "");                             //line:netp:parseuri:clearcgi
-	strcpy(filename, ".");                           //line:netp:parseuri:beginconvert1
-	strcat(filename, uri);                           //line:netp:parseuri:endconvert1
-	if (uri[strlen(uri)-1] == '/')                   //line:netp:parseuri:slashcheck
-	    strcat(filename, "home.html");               //line:netp:parseuri:appenddefault
-	return 1;
+    	strcpy(cgiargs, "");                             //line:netp:parseuri:clearcgi
+    	strcpy(filename, ".");                           //line:netp:parseuri:beginconvert1
+    	strcat(filename, uri);                           //line:netp:parseuri:endconvert1
+    	if (uri[strlen(uri)-1] == '/')                   //line:netp:parseuri:slashcheck
+    	    strcat(filename, "home.html");               //line:netp:parseuri:appenddefault
+    	return 1;
     }
     else {  /* Dynamic content */                        //line:netp:parseuri:isdynamic
-	ptr = index(uri, '?');                           //line:netp:parseuri:beginextract
-	if (ptr) {
-	    strcpy(cgiargs, ptr+1);
-	    *ptr = '\0';
-	}
-	else 
-	    strcpy(cgiargs, "");                         //line:netp:parseuri:endextract
-	strcpy(filename, ".");                           //line:netp:parseuri:beginconvert2
-	strcat(filename, uri);                           //line:netp:parseuri:endconvert2
-	return 0;
+    	ptr = index(uri, '?');                           //line:netp:parseuri:beginextract
+
+    	if (ptr) {
+    	    strcpy(cgiargs, ptr+1);
+    	    *ptr = '\0';
+    	}
+    	else 
+    	    strcpy(cgiargs, "");                         //line:netp:parseuri:endextract
+
+    	strcpy(filename, ".");                           //line:netp:parseuri:beginconvert2
+    	strcat(filename, uri);                           //line:netp:parseuri:endconvert2
+    	return 0;
     }
 }
 /* $end parse_uri */
@@ -191,14 +205,64 @@ void serve_dynamic(int fd, char *filename, char *cgiargs)
     Rio_writen(fd, buf, strlen(buf));
   
     if (Fork() == 0) { /* child */ //line:netp:servedynamic:fork
-	/* Real server would set all CGI vars here */
-	setenv("QUERY_STRING", cgiargs, 1); //line:netp:servedynamic:setenv
-	Dup2(fd, STDOUT_FILENO);         /* Redirect stdout to client */ //line:netp:servedynamic:dup2
-	Execve(filename, emptylist, environ); /* Run CGI program */ //line:netp:servedynamic:execve
+    	/* Real server would set all CGI vars here */
+    	setenv("QUERY_STRING", cgiargs, 1); //line:netp:servedynamic:setenv
+    	Dup2(fd, STDOUT_FILENO);         /* Redirect stdout to client */ //line:netp:servedynamic:dup2
+    	Execve(filename, emptylist, environ); /* Run CGI program */ //line:netp:servedynamic:execve
     }
     Wait(NULL); /* Parent waits for and reaps child */ //line:netp:servedynamic:wait
 }
 /* $end serve_dynamic */
+
+
+/*
+ * serve_loadavg - send loadavg info back to the client 
+ */
+/* $begin serve_loadavg */
+void serve_loadavg(int fd, char *filename, char *cgiargs) 
+{
+    //int srcfd;
+    //char *srcp, filetype[MAXLINE], 
+    char buf[MAXBUF];
+    //&filetype[0] = "text/html";
+
+    char content[MAXLINE];
+
+    FILE* fp;
+    double one, five, ten;
+    char ratio[32];
+    fp = fopen ("/proc/loadavg", "r");
+    fscanf (fp, "%lf %lf %lf %s\n", &one, &five, &ten, &ratio[0]);
+    fclose (fp);
+
+    char * running = strtok (ratio,"/");
+    char * total = strtok (NULL,"/");
+
+    sprintf(content, "{\"total_threads\": \"%s\", \"loadavg\": [\"%.2f\", \"%.2f\", \"%.2f\"], \"running_threads\": \"%s\"}", total, one, five, ten, running);
+  
+    // Generate the HTTP response 
+    // printf("Content-length: %d\r\n", (int)strlen(content));
+    // printf("Content-type: text/html\r\n\r\n");
+    // printf("%s", content);
+    // fflush(stdout);
+    // exit(0);
+
+    /* Send response headers to client */
+    sprintf(buf, "HTTP/1.0 200 OK\r\n");    //line:netp:servestatic:beginserve
+    sprintf(buf, "%sServer: Tiny Web Server\r\n", buf);
+    sprintf(buf, "%sContent-length: %d\r\n", buf, (int)strlen(content)); //filesize);
+    sprintf(buf, "%sContent-type: text/html\r\n\r\n", buf);
+    sprintf(buf, content);
+    Rio_writen(fd, buf, strlen(buf));       //line:netp:servestatic:endserve
+
+    /* Send response body to client */
+    //srcfd = Open(filename, O_RDONLY, 0);    //line:netp:servestatic:open
+    //srcp = Mmap(0, filesize, PROT_READ, MAP_PRIVATE, srcfd, 0);//line:netp:servestatic:mmap
+    //Close(srcfd);                           //line:netp:servestatic:close
+    //Rio_writen(fd, srcp, filesize);         //line:netp:servestatic:write
+    //Munmap(srcp, filesize);                 //line:netp:servestatic:munmap
+}
+
 
 /*
  * clienterror - returns an error message to the client

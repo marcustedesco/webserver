@@ -36,3 +36,7 @@ Files:
   cgi-bin/adder.c	CGI program that adds two numbers
   cgi-bin/Makefile	Makefile for adder.c
 
+
+To test:
+  ~cs3214/bin/server_unit_test.py -s ./tiny 8000
+

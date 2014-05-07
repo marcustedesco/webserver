@@ -6,6 +6,7 @@
 #include "csapp.h"
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 
 void doit(int fd);
 void read_requesthdrs(rio_t *rp);
@@ -14,6 +15,7 @@ void serve_static(int fd, char *filename, int filesize);
 void get_filetype(char *filename, char *filetype);
 void serve_dynamic(int fd, char *filename, char *cgiargs);
 void serve_loadavg(int fd, char *filename, char *cgiargs);
+int isCallbackValid(char * callback);
 void clienterror(int fd, char *cause, char *errnum, 
 		 char *shortmsg, char *longmsg);
 
@@ -66,8 +68,8 @@ void doit(int fd)
     is_static = parse_uri(uri, filename, cgiargs);       //line:netp:doit:staticcheck
 
     if(strstr(filename, "loadavg")){
-        printf("filename: %s\n", filename);
-        printf("cgiargs: %s\n", cgiargs);
+        //printf("filename: %s\n", filename);
+        //printf("cgiargs: %s\n", cgiargs);
         serve_loadavg(fd, filename, cgiargs);
         return;
     }
@@ -109,7 +111,7 @@ void read_requesthdrs(rio_t *rp)
     Rio_readlineb(rp, buf, MAXLINE);
     while(strcmp(buf, "\r\n")) {          //line:netp:readhdrs:checkterm
 	Rio_readlineb(rp, buf, MAXLINE);
-	printf("%s", buf);
+	//printf("%s", buf);
     }
     return;
 }
@@ -124,7 +126,7 @@ int parse_uri(char *uri, char *filename, char *cgiargs)
 {
     char *ptr;
 
-    if (!strstr(uri, "cgi-bin")) {  /* Static content */ //line:netp:parseuri:isstatic
+    if (!strstr(uri, "cgi-bin") && !strstr(uri, "loadavg")) {  /* Static content */ //line:netp:parseuri:isstatic
     	strcpy(cgiargs, "");                             //line:netp:parseuri:clearcgi
     	strcpy(filename, ".");                           //line:netp:parseuri:beginconvert1
     	strcat(filename, uri);                           //line:netp:parseuri:endconvert1
@@ -228,18 +230,25 @@ void serve_loadavg(int fd, char *filename, char *cgiargs)
 
     char content[MAXLINE];
 
-    FILE* fp;
-    double one, five, ten;
-    char ratio[32];
-    fp = fopen ("/proc/loadavg", "r");
-    fscanf (fp, "%lf %lf %lf %s\n", &one, &five, &ten, &ratio[0]);
-    fclose (fp);
+    printf("cgiargs: %s\n", cgiargs);
 
-    char * running = strtok (ratio,"/");
-    char * total = strtok (NULL,"/");
+    if(isCallbackValid(cgiargs)){
+        sprintf(content, "Invalid arguements");
+    }
+    else{
 
-    sprintf(content, "{\"total_threads\": \"%s\", \"loadavg\": [\"%.2f\", \"%.2f\", \"%.2f\"], \"running_threads\": \"%s\"}", total, one, five, ten, running);
-  
+        FILE* fp;
+        double one, five, ten;
+        char ratio[32];
+        fp = fopen ("/proc/loadavg", "r");
+        fscanf (fp, "%lf %lf %lf %s\n", &one, &five, &ten, &ratio[0]);
+        fclose (fp);
+
+        char * running = strtok (ratio,"/");
+        char * total = strtok (NULL,"/");
+
+        sprintf(content, "{\"total_threads\": \"%s\", \"loadavg\": [\"%.2f\", \"%.2f\", \"%.2f\"], \"running_threads\": \"%s\"}", total, one, five, ten, running);
+    }
     // Generate the HTTP response 
     // printf("Content-length: %d\r\n", (int)strlen(content));
     // printf("Content-type: text/html\r\n\r\n");
@@ -261,6 +270,32 @@ void serve_loadavg(int fd, char *filename, char *cgiargs)
     //Close(srcfd);                           //line:netp:servestatic:close
     //Rio_writen(fd, srcp, filesize);         //line:netp:servestatic:write
     //Munmap(srcp, filesize);                 //line:netp:servestatic:munmap
+}
+
+//isCallbackValid
+int isCallbackValid(char * callback){
+
+    printf("Callback: %s\n", callback);
+    int i = 0;
+    while(callback[i] != NULL){
+        printf("%c\n", callback[i]);
+        if(!(isalnum(callback[i])) && 
+           !(callback[i] == '.' || callback[i] == '_' || 
+            callback[i] == '&' || callback[i] == '=')){
+            return 1;
+        }
+        i++;
+    }
+
+    // printf("callback size: %d\n", strlen(callback));
+    // int i;
+    // for(i=0; i < strlen(callback); i++){
+    //     if(!isalnum(callback[i])){
+    //         return 1;
+    //     }
+    // }
+
+    return 0;
 }
 
 

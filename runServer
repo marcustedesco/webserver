@@ -1,0 +1,7 @@
+#!/bin/bash
+
+echo  "MAKING"
+make
+
+echo "RUNNING SERVER"
+./tiny 8000

@@ -52,7 +52,7 @@ int main(int argc, char **argv)
 
 
     	doit(connfd);                                             //line:netp:tiny:doit
-    	//Close(connfd);                                            //line:netp:tiny:close
+    	Close(connfd);                                            //line:netp:tiny:close
     }
 }
 /* $end tinymain */
@@ -87,6 +87,11 @@ void doit(int fd)
         //printf("filename: %s\n", filename);
         //printf("cgiargs: %s\n", cgiargs);
         serve_loadavg(fd, filename, cgiargs);
+        return;
+    }
+
+    if(strstr(filename, "meminfo")){
+        serve_meminfo(fd, filename, cgiargs);
         return;
     }
 
@@ -125,9 +130,10 @@ void read_requesthdrs(rio_t *rp)
     char buf[MAXLINE];
 
     Rio_readlineb(rp, buf, MAXLINE);
+    printf("READ_REQUEST: %s\n", buf);
     while(strcmp(buf, "\r\n")) {          //line:netp:readhdrs:checkterm
-	Rio_readlineb(rp, buf, MAXLINE);
-	//printf("%s", buf);
+    	Rio_readlineb(rp, buf, MAXLINE);
+    	printf("%s", buf);
     }
     return;
 }
@@ -142,7 +148,7 @@ int parse_uri(char *uri, char *filename, char *cgiargs)
 {
     char *ptr;
 
-    if (!strstr(uri, "cgi-bin") && !strstr(uri, "loadavg")) {  /* Static content */ //line:netp:parseuri:isstatic
+    if (!strstr(uri, "cgi-bin") && !strstr(uri, "loadavg") && !strstr(uri, "meminfo")) {  /* Static content */ //line:netp:parseuri:isstatic
     	strcpy(cgiargs, "");                             //line:netp:parseuri:clearcgi
     	strcpy(filename, ".");                           //line:netp:parseuri:beginconvert1
     	strcat(filename, uri);                           //line:netp:parseuri:endconvert1
@@ -296,6 +302,70 @@ void serve_loadavg(int fd, char *filename, char *cgiargs)
     //Close(srcfd);                           //line:netp:servestatic:close
     //Rio_writen(fd, srcp, filesize);         //line:netp:servestatic:write
     //Munmap(srcp, filesize);                 //line:netp:servestatic:munmap
+}
+
+void serve_meminfo(int fd, char *filename, char *cgiargs){
+   
+    char buf[MAXBUF];
+
+    char content[MAXLINE];
+    sprintf(content, "");
+
+    printf("cgiargs: %s\n", cgiargs);
+
+    if(!isCallbackValid(cgiargs)){
+        sprintf(content, "Invalid arguements");
+    }
+    else{
+        if(callbackValue(cgiargs) != NULL){
+
+            sprintf(content, "%s(", callbackValue(cgiargs));
+        }
+
+        FILE* fp;
+        char buffer[MAXBUF];
+        fp = fopen ("/proc/meminfo", "r");
+        sprintf(content, "%s{", content);
+        int first = 1;
+        while(fgets(buffer, sizeof(buffer), fp) != NULL){
+            if(!first)
+                sprintf(content, "%s, ", content);  
+            else
+                first = 0;
+            char * tok = NULL;
+            tok = strtok(buffer, ": \n");
+            sprintf(content, "%s\"%s\": ", content, tok);
+            tok = strtok(NULL, ": \n");
+            sprintf(content, "%s\"%s\"", content, tok);
+        }
+        sprintf(content, "%s}", content);
+
+        // while(fscanf (fp, "%s", &test) == 1){
+        //     sprintf(content, "%s\"%s\":", content, test);
+        // }
+        // fscanf (fp, "%s\n", &test);
+        // fscanf (fp, "%s\n", &test2);
+        fclose (fp);
+
+        //char * running = strtok (ratio,"/");
+        //char * total = strtok (NULL,"/");
+
+        // sprintf(content, "%s%s", content, test);
+        // sprintf(content, "%s%s", content, test2);
+    
+        if(callbackValue(cgiargs) != NULL){
+            sprintf(content, "%s)", content);
+        }
+    }
+
+    /* Send response headers to client */
+    sprintf(buf, "HTTP/1.0 200 OK\r\n");    //line:netp:servestatic:beginserve
+    sprintf(buf, "%sServer: Tiny Web Server\r\n", buf);
+    sprintf(buf, "%sContent-length: %d\r\n", buf, (int)strlen(content)); //filesize);
+    sprintf(buf, "%sContent-type: application/json\r\n\r\n", buf);
+    sprintf(buf, "%s%s", buf, content);
+    printf("BUF: %s\n", buf);
+    Rio_writen(fd, buf, strlen(buf));       //line:netp:servestatic:endserve
 }
 
 //isCallbackValid

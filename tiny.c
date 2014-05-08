@@ -23,17 +23,27 @@ void clienterror(int fd, char *cause, char *errnum,
 
 int main(int argc, char **argv) 
 {
-    int listenfd, connfd, port, clientlen;
+    int listenfd, connfd, port, clientlen, c;
     struct sockaddr_in clientaddr;
     signal(SIGPIPE, SIG_IGN);
 
     /* Check command line args */
-    if (argc != 3) {
+    if (argc < 3) {
     	fprintf(stderr, "usage: %s <port>\n", argv[0]);
     	exit(1);
     }
-    port = atoi(argv[2]);
-    printf("port: %d\n", port);
+
+    while((c = getopt(argc, argv, "p:")) != -1){
+        switch(c){
+            case 'p':
+                port = atoi(optarg);
+                printf("Port: %i\n", port);
+                break;
+        }
+    }
+
+    //port = atoi(argv[2]);
+    //printf("port: %d\n", port);
 
     listenfd = Open_listenfd(port);
     while (1) {

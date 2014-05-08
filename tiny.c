@@ -286,7 +286,7 @@ void serve_loadavg(int fd, char *filename, char *cgiargs)
     sprintf(buf, "%sServer: Tiny Web Server\r\n", buf);
     sprintf(buf, "%sContent-length: %d\r\n", buf, (int)strlen(content)); //filesize);
     sprintf(buf, "%sContent-type: application/json\r\n\r\n", buf);
-    sprintf(buf, "%s", content);
+    sprintf(buf, "%s%s", buf, content);
     Rio_writen(fd, buf, strlen(buf));       //line:netp:servestatic:endserve
 
     /* Send response body to client */

@@ -33,6 +33,7 @@ int main(int argc, char **argv)
     	exit(1);
     }
     port = atoi(argv[2]);
+    printf("port: %d\n", port);
 
     listenfd = Open_listenfd(port);
     while (1) {

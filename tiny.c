@@ -25,7 +25,6 @@ int main(int argc, char **argv)
 {
     int listenfd, connfd, port, clientlen, c;
     struct sockaddr_in clientaddr;
-    signal(SIGPIPE, SIG_IGN);
 
     /* Check command line args */
     if (argc < 3) {
@@ -42,10 +41,13 @@ int main(int argc, char **argv)
         }
     }
 
+    signal(SIGPIPE, SIG_IGN);
+
     //port = atoi(argv[2]);
     //printf("port: %d\n", port);
 
     listenfd = Open_listenfd(port);
+    printf("LISTENFD: %d\n", listenfd);
     while (1) {
     	clientlen = sizeof(clientaddr);
     	connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen); //line:netp:tiny:accept

@@ -15,7 +15,9 @@ void serve_static(int fd, char *filename, int filesize);
 void get_filetype(char *filename, char *filetype);
 void serve_dynamic(int fd, char *filename, char *cgiargs);
 void serve_loadavg(int fd, char *filename, char *cgiargs);
+void serve_meminfo(int fd, char *filename, char *cgiargs);
 int isCallbackValid(char * callback);
+char * callbackValue(char * callback);
 void clienterror(int fd, char *cause, char *errnum, 
 		 char *shortmsg, char *longmsg);
 
@@ -33,10 +35,12 @@ int main(int argc, char **argv)
 
     listenfd = Open_listenfd(port);
     while (1) {
-	clientlen = sizeof(clientaddr);
-	connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen); //line:netp:tiny:accept
-	doit(connfd);                                             //line:netp:tiny:doit
-	Close(connfd);                                            //line:netp:tiny:close
+    	clientlen = sizeof(clientaddr);
+    	connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen); //line:netp:tiny:accept
+
+
+    	doit(connfd);                                             //line:netp:tiny:doit
+    	Close(connfd);                                            //line:netp:tiny:close
     }
 }
 /* $end tinymain */
@@ -229,13 +233,18 @@ void serve_loadavg(int fd, char *filename, char *cgiargs)
     //&filetype[0] = "text/html";
 
     char content[MAXLINE];
+    sprintf(content, "");
 
     printf("cgiargs: %s\n", cgiargs);
 
-    if(isCallbackValid(cgiargs)){
+    if(!isCallbackValid(cgiargs)){
         sprintf(content, "Invalid arguements");
     }
     else{
+        if(callbackValue(cgiargs) != NULL){
+
+            sprintf(content, "%s(", callbackValue(cgiargs));
+        }
 
         FILE* fp;
         double one, five, ten;
@@ -247,7 +256,11 @@ void serve_loadavg(int fd, char *filename, char *cgiargs)
         char * running = strtok (ratio,"/");
         char * total = strtok (NULL,"/");
 
-        sprintf(content, "{\"total_threads\": \"%s\", \"loadavg\": [\"%.2f\", \"%.2f\", \"%.2f\"], \"running_threads\": \"%s\"}", total, one, five, ten, running);
+        sprintf(content, "%s{\"total_threads\": \"%s\", \"loadavg\": [\"%.2f\", \"%.2f\", \"%.2f\"], \"running_threads\": \"%s\"}", content, total, one, five, ten, running);
+    
+        if(callbackValue(cgiargs) != NULL){
+            sprintf(content, "%s)", content);
+        }
     }
     // Generate the HTTP response 
     // printf("Content-length: %d\r\n", (int)strlen(content));
@@ -260,8 +273,8 @@ void serve_loadavg(int fd, char *filename, char *cgiargs)
     sprintf(buf, "HTTP/1.0 200 OK\r\n");    //line:netp:servestatic:beginserve
     sprintf(buf, "%sServer: Tiny Web Server\r\n", buf);
     sprintf(buf, "%sContent-length: %d\r\n", buf, (int)strlen(content)); //filesize);
-    sprintf(buf, "%sContent-type: text/html\r\n\r\n", buf);
-    sprintf(buf, content);
+    sprintf(buf, "%sContent-type: application/json\r\n\r\n", buf);
+    sprintf(buf, "%s", content);
     Rio_writen(fd, buf, strlen(buf));       //line:netp:servestatic:endserve
 
     /* Send response body to client */
@@ -281,21 +294,34 @@ int isCallbackValid(char * callback){
         printf("%c\n", callback[i]);
         if(!(isalnum(callback[i])) && 
            !(callback[i] == '.' || callback[i] == '_' || 
-            callback[i] == '&' || callback[i] == '=')){
-            return 1;
+             callback[i] == '&' || callback[i] == '=')){
+            return 0;
         }
         i++;
     }
 
-    // printf("callback size: %d\n", strlen(callback));
-    // int i;
-    // for(i=0; i < strlen(callback); i++){
-    //     if(!isalnum(callback[i])){
-    //         return 1;
-    //     }
-    // }
+    return 1;
+}
 
-    return 0;
+//callbackValue
+//returns what the value of the callback argument is 
+char * callbackValue(char * callback){
+    char * tok = NULL;
+
+    tok = strtok(callback, "&");
+
+    printf("callback value function\n");
+
+    while(tok != NULL){
+        if(strstr(tok, "callback=") == tok){
+            return strstr(tok, "=")+1;
+        }
+        tok = strtok(NULL, "&");
+    }
+
+   // if(!strstr(callback, "callback="))
+    //    return NULL;
+    return NULL;
 }
 
 

@@ -806,8 +806,11 @@ int Open_listenfd(int port)
 {
     int rc;
 
-    if ((rc = open_listenfd(port)) < 0)
-	unix_error("Open_listenfd error");
+    if ((rc = open_listenfd(port)) < 0){
+        unix_error("Open_listenfd error");
+        exit(-1);
+    }
+
     return rc;
 }
 /* $end csapp.c */

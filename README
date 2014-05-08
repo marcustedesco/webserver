@@ -38,5 +38,5 @@ Files:
 
 
 To test:
-  ~cs3214/bin/server_unit_test.py -s ./tiny 8000
+  ~cs3214/bin/server_unit_test.py -s ./sysstatd -p 13051
 

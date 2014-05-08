@@ -25,6 +25,7 @@ int main(int argc, char **argv)
 {
     int listenfd, connfd, port, clientlen;
     struct sockaddr_in clientaddr;
+    signal(SIGPIPE, SIG_IGN);
 
     /* Check command line args */
     if (argc != 2) {

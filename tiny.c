@@ -52,7 +52,7 @@ int main(int argc, char **argv)
 
 
     	doit(connfd);                                             //line:netp:tiny:doit
-    	Close(connfd);                                            //line:netp:tiny:close
+    	//Close(connfd);                                            //line:netp:tiny:close
     }
 }
 /* $end tinymain */
@@ -83,12 +83,12 @@ void doit(int fd)
     /* Parse URI from GET request */
     is_static = parse_uri(uri, filename, cgiargs);       //line:netp:doit:staticcheck
 
-    /*if(strstr(filename, "loadavg")){
+    if(strstr(filename, "loadavg")){
         //printf("filename: %s\n", filename);
         //printf("cgiargs: %s\n", cgiargs);
         serve_loadavg(fd, filename, cgiargs);
         return;
-    }*/
+    }
 
     if (stat(filename, &sbuf) < 0) {                     //line:netp:doit:beginnotfound
     	clienterror(fd, filename, "404", "Not found",

@@ -86,7 +86,7 @@ void doit(int fd)
     if(strstr(filename, "loadavg")){
         //printf("filename: %s\n", filename);
         //printf("cgiargs: %s\n", cgiargs);
-        serve_loadavg(fd, filename, cgiargs);
+        //serve_loadavg(fd, filename, cgiargs);
         return;
     }
 
@@ -287,6 +287,7 @@ void serve_loadavg(int fd, char *filename, char *cgiargs)
     sprintf(buf, "%sContent-length: %d\r\n", buf, (int)strlen(content)); //filesize);
     sprintf(buf, "%sContent-type: application/json\r\n\r\n", buf);
     sprintf(buf, "%s%s", buf, content);
+    printf("BUF: %s\n", buf);
     Rio_writen(fd, buf, strlen(buf));       //line:netp:servestatic:endserve
 
     /* Send response body to client */

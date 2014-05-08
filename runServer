@@ -4,4 +4,4 @@ echo  "MAKING"
 make
 
 echo "RUNNING SERVER"
-./tiny 8000
+./sysstatd -p 13051

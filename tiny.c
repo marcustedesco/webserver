@@ -28,11 +28,11 @@ int main(int argc, char **argv)
     signal(SIGPIPE, SIG_IGN);
 
     /* Check command line args */
-    if (argc != 2) {
-	fprintf(stderr, "usage: %s <port>\n", argv[0]);
-	exit(1);
+    if (argc != 3) {
+    	fprintf(stderr, "usage: %s <port>\n", argv[0]);
+    	exit(1);
     }
-    port = atoi(argv[1]);
+    port = atoi(argv[2]);
 
     listenfd = Open_listenfd(port);
     while (1) {

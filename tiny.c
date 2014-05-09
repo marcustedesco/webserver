@@ -52,7 +52,7 @@ int main(int argc, char **argv)
     	clientlen = sizeof(clientaddr);
     	connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen); //line:netp:tiny:accept
 
-
+        //fnctl function
     	doit(connfd);                                             //line:netp:tiny:doit
     	Close(connfd);                                            //line:netp:tiny:close
     }
@@ -88,19 +88,8 @@ void doit(int fd)
     /* Parse URI from GET request */
     is_static = parse_uri(uri, filename, cgiargs);       //line:netp:doit:staticcheck
 
-    if(strstr(filename, "loadavg")){
-        //printf("filename: %s\n", filename);
-        //printf("cgiargs: %s\n", cgiargs);
-        serve_loadavg(fd, filename, cgiargs);
-        return;
-    }
 
-    if(strstr(filename, "meminfo")){
-        serve_meminfo(fd, filename, cgiargs);
-        return;
-    }
-
-    if (stat(filename, &sbuf) < 0) {                     //line:netp:doit:beginnotfound
+    if (stat(filename, &sbuf) < 0 && !strstr(filename, "loadavg") && !strstr(filename, "meminfo")) {                     //line:netp:doit:beginnotfound
     	clienterror(fd, filename, "404", "Not found",
     		    "Tiny couldn't find this file");
     	return;
@@ -113,6 +102,17 @@ void doit(int fd)
     	    return;
     	}
     	serve_static(fd, filename, sbuf.st_size);        //line:netp:doit:servestatic
+    }
+    else if(strstr(filename, "loadavg")){
+        //printf("filename: %s\n", filename);
+        //printf("cgiargs: %s\n", cgiargs);
+        serve_loadavg(fd, filename, cgiargs);
+        //return;
+    }
+
+    else if(strstr(filename, "meminfo")){
+        serve_meminfo(fd, filename, cgiargs);
+        //return;
     }
     else { /* Serve dynamic content */
     	if (!(S_ISREG(sbuf.st_mode)) || !(S_IXUSR & sbuf.st_mode)) { //line:netp:doit:executable
@@ -301,6 +301,7 @@ void serve_loadavg(int fd, char *filename, char *cgiargs)
     printf("BUF: %s\n", buf);
     Rio_writen(fd, buf, strlen(buf));       //line:netp:servestatic:endserve
 
+    //free(buf);
     /* Send response body to client */
     //srcfd = Open(filename, O_RDONLY, 0);    //line:netp:servestatic:open
     //srcp = Mmap(0, filesize, PROT_READ, MAP_PRIVATE, srcfd, 0);//line:netp:servestatic:mmap
@@ -371,6 +372,7 @@ void serve_meminfo(int fd, char *filename, char *cgiargs){
     sprintf(buf, "%s%s", buf, content);
     printf("BUF: %s\n", buf);
     Rio_writen(fd, buf, strlen(buf));       //line:netp:servestatic:endserve
+    //free(buf);
 }
 
 //isCallbackValid

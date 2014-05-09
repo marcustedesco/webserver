@@ -7,11 +7,17 @@ LIB = -lpthread
 
 all: sysstatd cgi
 
-sysstatd: tiny.c csapp.o
-	$(CC) $(CFLAGS) -o sysstatd tiny.c csapp.o $(LIB)
+sysstatd: tiny.c csapp.o threadpool.o list.o
+	$(CC) $(CFLAGS) -o sysstatd tiny.c threadpool.c list.c csapp.o $(LIB)
 
 csapp.o:
 	$(CC) $(CFLAGS) -c csapp.c
+
+list.o:
+	$(CC) $(CFLAGS) -c list.c
+
+threadpool.o:
+	$(CC) $(CFLAGS) -c threadpool.c
 
 cgi:
 	(cd cgi-bin; make)

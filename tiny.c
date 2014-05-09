@@ -7,7 +7,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <list.h>
+#include <threadpool.h>
 
+void * doit_wrapper(void * connect_fd);
 void doit(int fd);
 void read_requesthdrs(rio_t *rp);
 int parse_uri(char *uri, char *filename, char *cgiargs);
@@ -20,6 +23,8 @@ int isCallbackValid(char * callback);
 char * callbackValue(char * callback);
 void clienterror(int fd, char *cause, char *errnum, 
 		 char *shortmsg, char *longmsg);
+
+pthread_mutex_t mutex;
 
 int main(int argc, char **argv) 
 {
@@ -48,16 +53,52 @@ int main(int argc, char **argv)
 
     listenfd = Open_listenfd(port);
     printf("LISTENFD: %d\n", listenfd);
+
+    struct thread_pool *pool = thread_pool_new(16);
+    pthread_mutex_init(&mutex, NULL);
+
     while (1) {
     	clientlen = sizeof(clientaddr);
     	connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen); //line:netp:tiny:accept
 
         //fnctl function
-    	doit(connfd);                                             //line:netp:tiny:doit
-    	Close(connfd);                                            //line:netp:tiny:close
+        int * connect_ptr = malloc(sizeof(int));
+        *connect_ptr = connfd;
+
+        thread_pool_submit(pool, doit_wrapper, (void *)connect_ptr);
+    	//doit(connfd);                                             //line:netp:tiny:doit
+    	//printf("CLOSE CONNECTION\n");
+        //Close(connfd);                                            //line:netp:tiny:close
     }
 }
 /* $end tinymain */
+
+//wrapper to call doit from the threadpool
+void * doit_wrapper(void * connect_fd)
+{
+    int ptr_connect_fd = *((int *)connect_fd);
+ 
+    doit(ptr_connect_fd);
+    printf("CLOSE CONNECTION\n");
+    Close(ptr_connect_fd);
+    // int result = doit(ptr_connect_fd);
+ 
+    // if (result == 1)
+    // {
+    //     Close(ptr_connect_fd);
+    // }
+ 
+    // else if (result == -1)
+    // {
+    //     printf("Error on result, exiting\n");
+    //     exit(-1);
+    // }
+ 
+    free(connect_fd);
+ 
+    return 0;
+}
+
 
 /*
  * doit - handle one HTTP request/response transaction
@@ -253,10 +294,12 @@ void serve_loadavg(int fd, char *filename, char *cgiargs)
     //int srcfd;
     //char *srcp, filetype[MAXLINE], 
     char buf[MAXBUF];
+    buf[0] = '\0';
     //&filetype[0] = "text/html";
 
     char content[MAXLINE];
-    sprintf(content, "");
+    content[0] = '\0';
+    //sprintf(content, "");
 
     printf("cgiargs: %s\n", cgiargs);
 
@@ -272,6 +315,7 @@ void serve_loadavg(int fd, char *filename, char *cgiargs)
         FILE* fp;
         double one, five, ten;
         char ratio[32];
+        ratio[0] = '\0';
         fp = fopen ("/proc/loadavg", "r");
         fscanf (fp, "%lf %lf %lf %s\n", &one, &five, &ten, &ratio[0]);
         fclose (fp);
@@ -300,22 +344,16 @@ void serve_loadavg(int fd, char *filename, char *cgiargs)
     sprintf(buf, "%s%s", buf, content);
     printf("BUF: %s\n", buf);
     Rio_writen(fd, buf, strlen(buf));       //line:netp:servestatic:endserve
-
-    //free(buf);
-    /* Send response body to client */
-    //srcfd = Open(filename, O_RDONLY, 0);    //line:netp:servestatic:open
-    //srcp = Mmap(0, filesize, PROT_READ, MAP_PRIVATE, srcfd, 0);//line:netp:servestatic:mmap
-    //Close(srcfd);                           //line:netp:servestatic:close
-    //Rio_writen(fd, srcp, filesize);         //line:netp:servestatic:write
-    //Munmap(srcp, filesize);                 //line:netp:servestatic:munmap
 }
 
 void serve_meminfo(int fd, char *filename, char *cgiargs){
    
     char buf[MAXBUF];
+    buf[0] = '\0';
 
     char content[MAXLINE];
-    sprintf(content, "");
+    content[0] = '\0';
+    //sprintf(content, "");
 
     printf("cgiargs: %s\n", cgiargs);
 
@@ -330,6 +368,7 @@ void serve_meminfo(int fd, char *filename, char *cgiargs){
 
         FILE* fp;
         char buffer[MAXBUF];
+        buffer[0] = '\0';
         fp = fopen ("/proc/meminfo", "r");
         sprintf(content, "%s{", content);
         int first = 1;

@@ -129,9 +129,14 @@ void doit(int fd)
     /* Parse URI from GET request */
     is_static = parse_uri(uri, filename, cgiargs);       //line:netp:doit:staticcheck
 
+    printf("DOIT URI: %s\n", uri);
+    printf("DOIT FILENAME: %s\n", filename);
+    printf("DOIT CGIARGS: %s\n", cgiargs);
 
-    if (stat(filename, &sbuf) < 0 && !strstr(filename, "loadavg") && !strstr(filename, "meminfo")) {                     //line:netp:doit:beginnotfound
-    	clienterror(fd, filename, "404", "Not found",
+
+    //if (stat(filename, &sbuf) < 0 && !strstr(filename, "loadavg") && !strstr(filename, "meminfo")) {                     //line:netp:doit:beginnotfound
+    if (stat(filename, &sbuf) < 0 && strcmp(filename+2, "loadavg") != 0 && strcmp(filename+2, "meminfo") != 0) {	
+        clienterror(fd, filename, "404", "Not found",
     		    "Tiny couldn't find this file");
     	return;
     }                                                    //line:netp:doit:endnotfound
@@ -192,6 +197,10 @@ void read_requesthdrs(rio_t *rp)
 /* $begin parse_uri */
 int parse_uri(char *uri, char *filename, char *cgiargs) 
 {
+    printf("URI: %s\n", uri);
+    printf("FILENAME: %s\n", filename);
+    printf("CGIARGS: %s\n", cgiargs);
+
     char *ptr;
 
     if (!strstr(uri, "cgi-bin") && !strstr(uri, "loadavg") && !strstr(uri, "meminfo")) {  /* Static content */ //line:netp:parseuri:isstatic

@@ -48,9 +48,6 @@ int main(int argc, char **argv)
 
     signal(SIGPIPE, SIG_IGN);
 
-    //port = atoi(argv[2]);
-    //printf("port: %d\n", port);
-
     listenfd = Open_listenfd(port);
     printf("LISTENFD: %d\n", listenfd);
 
@@ -64,8 +61,9 @@ int main(int argc, char **argv)
         //fnctl function
         int * connect_ptr = malloc(sizeof(int));
         *connect_ptr = connfd;
-
+        printf("Connection thread started: %d\n", connect_ptr);
         thread_pool_submit(pool, doit_wrapper, (void *)connect_ptr);
+        printf("Connection pool submitted: %d\n", connect_ptr);
     	//doit(connfd);                                             //line:netp:tiny:doit
     	//printf("CLOSE CONNECTION\n");
         //Close(connfd);                                            //line:netp:tiny:close
@@ -79,21 +77,9 @@ void * doit_wrapper(void * connect_fd)
     int ptr_connect_fd = *((int *)connect_fd);
  
     doit(ptr_connect_fd);
-    printf("CLOSE CONNECTION\n");
+    printf("CLOSE CONNECTION: %d\n", ptr_connect_fd);
     Close(ptr_connect_fd);
-    // int result = doit(ptr_connect_fd);
- 
-    // if (result == 1)
-    // {
-    //     Close(ptr_connect_fd);
-    // }
- 
-    // else if (result == -1)
-    // {
-    //     printf("Error on result, exiting\n");
-    //     exit(-1);
-    // }
- 
+   
     free(connect_fd);
  
     return 0;
@@ -338,12 +324,6 @@ void serve_loadavg(int fd, char *filename, char *cgiargs)
             sprintf(content, "%s)", content);
         }
     }
-    // Generate the HTTP response 
-    // printf("Content-length: %d\r\n", (int)strlen(content));
-    // printf("Content-type: text/html\r\n\r\n");
-    // printf("%s", content);
-    // fflush(stdout);
-    // exit(0);
 
     /* Send response headers to client */
     sprintf(buf, "HTTP/1.0 200 OK\r\n");    //line:netp:servestatic:beginserve
@@ -355,6 +335,7 @@ void serve_loadavg(int fd, char *filename, char *cgiargs)
     Rio_writen(fd, buf, strlen(buf));       //line:netp:servestatic:endserve
 }
 
+//Serves the /proc/meminfo stats 
 void serve_meminfo(int fd, char *filename, char *cgiargs){
    
     char buf[MAXBUF];
@@ -394,18 +375,7 @@ void serve_meminfo(int fd, char *filename, char *cgiargs){
         }
         sprintf(content, "%s}", content);
 
-        // while(fscanf (fp, "%s", &test) == 1){
-        //     sprintf(content, "%s\"%s\":", content, test);
-        // }
-        // fscanf (fp, "%s\n", &test);
-        // fscanf (fp, "%s\n", &test2);
         fclose (fp);
-
-        //char * running = strtok (ratio,"/");
-        //char * total = strtok (NULL,"/");
-
-        // sprintf(content, "%s%s", content, test);
-        // sprintf(content, "%s%s", content, test2);
     
         if(callbackValue(cgiargs) != NULL){
             sprintf(content, "%s)", content);
